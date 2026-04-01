@@ -1002,23 +1002,30 @@ export default function App() {
   );
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        if (u.email === AUTHORIZED_EMAIL) {
-          setUser(u);
-          setUnauthorized(false);
-        } else {
-          await signOut(auth);
-          setUser(null);
-          setUnauthorized(true);
-        }
+  // 🔥 SE FOR AGENDAMENTO → NÃO USA FIREBASE
+  if (isPublicBooking) {
+    setLoading(false);
+    return;
+  }
+
+  const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    if (u) {
+      if (u.email === AUTHORIZED_EMAIL) {
+        setUser(u);
+        setUnauthorized(false);
       } else {
+        await signOut(auth);
         setUser(null);
+        setUnauthorized(true);
       }
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
+  });
+
+  return unsubscribe;
+}, [isPublicBooking]);
 
   useEffect(() => {
     if (!loading && !user && !isPublicBooking && !unauthorized) {
