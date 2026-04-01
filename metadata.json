@@ -1,0 +1,5 @@
+{
+  "name": "TRIAS",
+  "description": "TRIAS - Assistente inteligente para massagistas gerenciarem agenda, clientes e atendimentos.",
+  "requestFramePermissions": ["microphone"]
+}

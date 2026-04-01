@@ -1,0 +1,253 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: clients
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - phone: string (required, 6-25 chars)
+    //   - userId: string (required, owner ID)
+    //   - email: string (optional, valid email format)
+    //   - timestamp: timestamp (optional, creation time)
+    //   - prontuarios: list (optional, array of note objects)
+    //
+    // Collection: appointments
+    // Fields:
+    //   - clientName: string (required, 1-100 chars)
+    //   - clientPhone: string (required, 6-25 chars)
+    //   - serviceName: string (required, 1-100 chars)
+    //   - startTime: string (required, HH:MM format)
+    //   - endTime: string (required, HH:MM format)
+    //   - date: string (required, YYYY-MM-DD format)
+    //   - userId: string (required, owner ID)
+    //   - status: string (required, 'scheduled' or 'cancelled')
+    //   - timestamp: timestamp (optional, creation time)
+    //
+    // Collection: messages
+    // Fields:
+    //   - text: string (required, 1-5000 chars)
+    //   - sender: string (required, 'user' or 'iara')
+    //   - timestamp: timestamp (required)
+    //   - userId: string (required)
+    //   - archived: boolean (optional)
+    //
+    // Collection: bookingConfigs
+    // Fields:
+    //   - userId: string (required)
+    //   - workingDays: list of integers (required, 0-6)
+    //   - startTime: string (required, HH:MM)
+    //   - endTime: string (required, HH:MM)
+    //   - breakStart: string (optional, HH:MM)
+    //   - breakEnd: string (optional, HH:MM)
+    //   - services: list of objects (required, {name: string, duration: int, description: string})
+    //   - initialMessage: string (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "vitor.cd.1997@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+    }
+    function userIdUnchanged() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    function isRecent(t) {
+      return t is timestamp && t > request.time - duration.value(1, 'h') && t < request.time + duration.value(1, 'h');
+    }
+
+    // Domain Validators
+    function isValidClient(data) {
+      let requiredFields = ['name', 'phone', 'userId'];
+      let allowedFields = ['name', 'phone', 'userId', 'email', 'timestamp', 'prontuarios'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() > 5 && data.phone.size() < 25 &&
+             (!('email' in data) || (data.email is string && data.email.size() < 100 && isValidEmail(data.email))) &&
+             (!('timestamp' in data) || isRecent(data.timestamp) || (resource != null && data.timestamp == resource.data.timestamp)) &&
+             (!('prontuarios' in data) || (data.prontuarios is list && data.prontuarios.size() < 1000));
+    }
+
+    function isValidAppointment(data) {
+      let requiredFields = ['clientName', 'clientPhone', 'serviceName', 'startTime', 'endTime', 'date', 'userId', 'status'];
+      let allowedFields = ['clientName', 'clientPhone', 'serviceName', 'startTime', 'endTime', 'date', 'userId', 'status', 'timestamp', 'clientId', 'servico_nome', 'servico_duracao', 'servico_tipo'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.clientName is string && data.clientName.size() > 0 && data.clientName.size() < 100 &&
+             data.clientPhone is string && data.clientPhone.size() > 5 && data.clientPhone.size() < 25 &&
+             data.serviceName is string && data.serviceName.size() > 0 && data.serviceName.size() < 100 &&
+             data.startTime is string && data.startTime.matches("^\\d{2}:\\d{2}$") &&
+             data.endTime is string && data.endTime.matches("^\\d{2}:\\d{2}$") &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.status in ['scheduled', 'cancelled'] &&
+             (!('timestamp' in data) || isRecent(data.timestamp) || (resource != null && data.timestamp == resource.data.timestamp)) &&
+             (!('clientId' in data) || data.clientId is string) &&
+             (!('servico_nome' in data) || data.servico_nome is string) &&
+             (!('servico_duracao' in data) || data.servico_duracao is string) &&
+             (!('servico_tipo' in data) || data.servico_tipo is string);
+    }
+
+    function isValidMessage(data) {
+      let requiredFields = ['text', 'sender', 'timestamp', 'userId'];
+      let allowedFields = ['text', 'sender', 'timestamp', 'userId', 'archived'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.sender in ['user', 'iara'] &&
+             (isRecent(data.timestamp) || (resource != null && data.timestamp == resource.data.timestamp)) &&
+             (!('archived' in data) || data.archived is bool);
+    }
+
+    function isValidBookingConfig(data) {
+      let requiredFields = ['userId', 'workingDays', 'startTime', 'endTime', 'services'];
+      let allowedFields = ['userId', 'workingDays', 'startTime', 'endTime', 'services', 'initialMessage', 'breakStart', 'breakEnd', 'slotInterval'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.userId is string &&
+             data.workingDays is list &&
+             data.startTime is string && data.startTime.matches("^\\d{2}:\\d{2}$") &&
+             data.endTime is string && data.endTime.matches("^\\d{2}:\\d{2}$") &&
+             (!('breakStart' in data) || (data.breakStart is string && data.breakStart.matches("^\\d{2}:\\d{2}$"))) &&
+             (!('breakEnd' in data) || (data.breakEnd is string && data.breakEnd.matches("^\\d{2}:\\d{2}$"))) &&
+             (!('breakStart' in data && 'breakEnd' in data) || (data.breakStart >= data.startTime && data.breakEnd <= data.endTime && data.breakStart < data.breakEnd)) &&
+             data.services is list &&
+             (!('initialMessage' in data) || data.initialMessage is string) &&
+             (!('slotInterval' in data) || (data.slotInterval is number && data.slotInterval > 0 && data.slotInterval <= 480));
+    }
+
+    function isValidSlot(data) {
+      let requiredFields = ['userId', 'date', 'startTime', 'endTime'];
+      let allowedFields = ['userId', 'date', 'startTime', 'endTime', 'appointmentId'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.userId is string &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.startTime is string && data.startTime.matches("^\\d{2}:\\d{2}$") &&
+             data.endTime is string && data.endTime.matches("^\\d{2}:\\d{2}$") &&
+             (!('appointmentId' in data) || data.appointmentId is string);
+    }
+
+    function isValidServiceHistory(data) {
+      let requiredFields = ['clientId', 'clientName', 'date', 'startTime', 'serviceName', 'duration', 'userId'];
+      let allowedFields = ['clientId', 'clientName', 'date', 'startTime', 'serviceName', 'duration', 'userId', 'timestamp', 'type'];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             data.clientId is string &&
+             data.clientName is string &&
+             data.date is string &&
+             data.startTime is string &&
+             data.serviceName is string &&
+             data.duration is string &&
+             data.userId is string &&
+             (!('timestamp' in data) || isRecent(data.timestamp)) &&
+             (!('type' in data) || data.type is string);
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/clientes/{clientId} {
+      allow read: if true; // Publicly readable to check existence by phone for booking
+      allow create: if isValidClient(request.resource.data) && request.resource.data.userId == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && isValidClient(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/agenda/{appointmentId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isValidAppointment(request.resource.data) && request.resource.data.userId == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && isValidAppointment(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/history/{historyId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isValidServiceHistory(request.resource.data) && request.resource.data.userId == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && isValidServiceHistory(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/messages/{messageId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/config/{configId} {
+      allow read: if true; // Publicly readable for the booking page
+      allow create: if isOwner(userId) && isValidBookingConfig(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidBookingConfig(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/slots/{slotId} {
+      allow read: if true; // Publicly readable for availability check
+      allow create: if isValidSlot(request.resource.data) && request.resource.data.userId == userId;
+      allow update: if (isOwner(userId) || isAdmin()) && isValidSlot(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // Legacy matches (optional, but good for migration if any data remains)
+    match /clients/{clientId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidClient(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidClient(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isValidAppointment(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidAppointment(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /serviceHistory/{historyId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isValidServiceHistory(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid) && isValidServiceHistory(request.resource.data);
+      allow delete: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    match /messages/{messageId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isOwner(request.resource.data.userId) && isValidMessage(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /bookingConfigs/{configId} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.userId) && isValidBookingConfig(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidBookingConfig(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /slots/{slotId} {
+      allow read: if true;
+      allow create: if isValidSlot(request.resource.data);
+      allow update: if (isDocOwner() || isAdmin()) && isValidSlot(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}

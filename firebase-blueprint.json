@@ -1,0 +1,140 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "A massage client",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "userId": { "type": "string", "description": "Owner ID" },
+        "timestamp": { "type": "object", "description": "Creation timestamp" },
+        "prontuarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "texto": { "type": "string" },
+              "data": { "type": "string" },
+              "hora": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["name", "phone", "userId"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A massage session",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string", "description": "Name of the client" },
+        "clientPhone": { "type": "string", "description": "Phone of the client" },
+        "serviceName": { "type": "string", "description": "Name of the service" },
+        "startTime": { "type": "string", "description": "HH:MM" },
+        "endTime": { "type": "string", "description": "HH:MM" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "status": { "type": "string", "enum": ["scheduled", "cancelled"] },
+        "userId": { "type": "string", "description": "Owner ID" },
+        "timestamp": { "type": "object", "description": "Creation timestamp" }
+      },
+      "required": ["clientName", "clientPhone", "serviceName", "startTime", "endTime", "date", "userId", "status"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat history with I.A.R.A",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "sender": { "type": "string", "enum": ["user", "iara"] },
+        "timestamp": { "type": "object" },
+        "userId": { "type": "string" },
+        "archived": { "type": "boolean" }
+      },
+      "required": ["text", "sender", "timestamp", "userId"]
+    },
+    "BookingConfig": {
+      "title": "BookingConfig",
+      "description": "Configuration for the public booking page",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "workingDays": { "type": "array", "items": { "type": "integer" } },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "breakStart": { "type": "string" },
+        "breakEnd": { "type": "string" },
+        "services": { 
+          "type": "array", 
+          "items": { 
+            "type": "object", 
+            "properties": {
+              "name": { "type": "string" },
+              "duration": { "type": "integer" },
+              "description": { "type": "string" }
+            }
+          } 
+        },
+        "initialMessage": { "type": "string" }
+      },
+      "required": ["userId", "workingDays", "startTime", "endTime", "services"]
+    },
+    "Slot": {
+      "title": "Slot",
+      "description": "Publicly visible busy slot",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "appointmentId": { "type": "string" }
+      },
+      "required": ["userId", "date", "startTime", "endTime"]
+    },
+    "ServiceHistory": {
+      "title": "ServiceHistory",
+      "description": "History of services provided to a client",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "duration": { "type": "string" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "object" },
+        "type": { "type": "string" }
+      },
+      "required": ["clientId", "clientName", "date", "startTime", "serviceName", "duration", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/clientes/{clientId}": {
+      "schema": "Client",
+      "description": "Collection of clients for a specific user"
+    },
+    "/users/{userId}/agenda/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Collection of appointments for a specific user"
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Chat history for a specific user"
+    },
+    "/users/{userId}/config/{configId}": {
+      "schema": "BookingConfig",
+      "description": "Configuration for public booking for a specific user"
+    },
+    "/users/{userId}/slots/{slotId}": {
+      "schema": "Slot",
+      "description": "Public busy slots for a specific user"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "ServiceHistory",
+      "description": "Service history for a specific user"
+    }
+  }
+}
