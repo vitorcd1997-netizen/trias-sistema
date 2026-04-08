@@ -2964,7 +2964,9 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                     <div className="text-lg">{app.startTime}</div>
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-black text-xl text-sky-900">{app.clientName}</h4>
+                    <h4 className="font-black text-base md:text-xl text-sky-900 truncate">
+                      {app.clientName}
+                    </h4>
                     <div className="flex flex-col text-sky-500 text-sm mt-1">
                       <span className="flex items-center gap-1 font-bold"><Clock size={14} /> {app.startTime} - {app.endTime}</span>
                       <span className="text-sky-400 font-medium">
@@ -2976,14 +2978,14 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                   </div>
                   <button 
                     onClick={() => setWhatsappApp(app)}
-                    className="p-3 text-sky-200 hover:text-green-500 hover:bg-green-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2 md:p-3 text-green-600 bg-green-50 rounded-xl transition-all"
                     title="Enviar WhatsApp"
                   >
                     <Phone size={20} />
                   </button>
                   <button 
                     onClick={() => handleCancel(app.id)}
-                    className="p-3 text-sky-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2 md:p-3 text-red-600 bg-red-50 rounded-xl transition-all"
                     title="Excluir agendamento"
                   >
                     <Trash2 size={20} />
