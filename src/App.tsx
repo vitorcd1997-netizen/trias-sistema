@@ -2976,7 +2976,7 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                       </span>
                     </div>
                   </div>
-               <div className="flex gap-2>
+               div className="flex gap-2>
                   <button 
                     onClick={() => setWhatsappApp(app)}
                     className="p-2 md:p-3 text-green-600 bg-green-50 rounded-xl transition-all"
