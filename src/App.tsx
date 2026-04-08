@@ -2958,12 +2958,12 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                 animate={{ opacity: 1, x: 0 }}
                 key={app.id} 
               >
-                <Card className="flex items-center gap-4 p-5 hover:shadow-md transition-shadow group">
+                <Card className="flex justify-between items-center gap-3 p-3 md:p-5 hover:shadow-md transition-shadow group">
                   <div className="bg-sky-50 p-3 rounded-2xl text-sky-600 font-black text-center min-w-[80px]">
                     <div className="text-xs uppercase opacity-50">Início</div>
                     <div className="text-lg">{app.startTime}</div>
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-black text-base md:text-xl text-sky-900 truncate">
                       {app.clientName}
                     </h4>
@@ -2976,6 +2976,7 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                       </span>
                     </div>
                   </div>
+               <div className="flex gap-2>
                   <button 
                     onClick={() => setWhatsappApp(app)}
                     className="p-2 md:p-3 text-green-600 bg-green-50 rounded-xl transition-all"
@@ -2990,6 +2991,7 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                   >
                     <Trash2 size={20} />
                   </button>
+               /div>
                 </Card>
               </motion.div>
             ))
