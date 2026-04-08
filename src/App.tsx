@@ -2982,7 +2982,7 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                     className="p-2 text-green-600 bg-green-50 rounded-xl"
                     title="Enviar WhatsApp"
                   >
-                    <Phone size={18} />
+                    {/* button content */}
                   </button>
                   <button 
                     onClick={() => handleCancel(app.id)}
