@@ -2979,10 +2979,10 @@ function AgendaView({ appointments, clients }: { appointments: Appointment[]; cl
                <div className="flex gap-2>
                   <button 
                     onClick={() => setWhatsappApp(app)}
-                    className="p-2 md:p-3 text-green-600 bg-green-50 rounded-xl transition-all"
+                    className="p-2 text-green-600 bg-green-50 rounded-xl"
                     title="Enviar WhatsApp"
                   >
-                    <Phone size={20} />
+                    <Phone size={18} />
                   </button>
                   <button 
                     onClick={() => handleCancel(app.id)}
